@@ -19,7 +19,7 @@ public class Scheduler {
     public void processHistoricalOptionsData() {
         SlackUtil slackUtil   =   new SlackUtil();
         slackUtil.sendMessage("Started Daily Historical Options Ingestor : " + new SimpleDateFormat("MM-dd-yyyy hh:mm").format(new Date()));
-        HistoricalOptionsIngestor historicalOptionsIngestor =   new HistoricalOptionsIngestor();
+        HistoricalOptionsIngestor historicalOptionsIngestor =   new HistoricalOptionsIngestor("/data/historical_options_input");
 
         slackUtil.sendMessage("Finished Daily Historical Options Ingestor : " + new SimpleDateFormat("MM-dd-yyyy hh:mm").format(new Date()));
     }
