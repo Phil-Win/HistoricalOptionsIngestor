@@ -23,4 +23,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	compile group: 'commons-io', name: 'commons-io', version: '2.4'
+	implementation 'com.opencsv:opencsv:3.8'
+	implementation 'org.apache.commons:commons-csv:1.3'
 }
