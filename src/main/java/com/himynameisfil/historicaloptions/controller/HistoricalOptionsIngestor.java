@@ -40,7 +40,7 @@ public class HistoricalOptionsIngestor {
     }
 
 
-    public void loadInputFolder() throws SQLException, ClassNotFoundException {
+    public void loadInputFolder() throws SQLException, ClassNotFoundException, IOException {
         listOfHistoricalOptionsRecords  =   new ArrayList<HistoricalOption>();
 
         //get all file names
@@ -58,6 +58,7 @@ public class HistoricalOptionsIngestor {
             insertAllDataRecords();
 
             //move all processed files to completed
+            moveToCompleted();
 
         }
     }
@@ -158,6 +159,9 @@ public class HistoricalOptionsIngestor {
             } else {
                 slackUtil.sendMessage("HistoricalOptionsIngestor: There is a non csv file in in the ingestion folder: " + file.getName());
             }
+            if ( returnListOfCsvs.size() >= 2 ) {
+                break;
+            }
         }
         this.csvFilesToProcess  =   returnListOfCsvs;
     }
@@ -178,19 +182,16 @@ public class HistoricalOptionsIngestor {
     private void moveToCompleted() throws IOException {
         //currently broken, idk why
         File    file;
-        File    destinationFolder;
         String  fileName;
         for (String processCsv : this.processedCsvFiles) {
             file        =   new File(processCsv);
-            destinationFolder    =   new File(COMPLETED_FOLDER);
             fileName    =   file.getName();
-            if (file.isFile()) {
-                slackUtil.sendMessage("valid file " + fileName);
+            if (file.renameTo(new File(COMPLETED_FOLDER + fileName))) {
+                file.delete();
+                slackUtil.sendMessage("Sent the file to completed: " + processCsv);
+            } else {
+                slackUtil.sendMessage("Failed to send file to completed: " + processCsv);
             }
-            if (destinationFolder.isDirectory()) {
-                slackUtil.sendMessage("Completed folder is valid" + COMPLETED_FOLDER);
-            }
-            Path    temp    =   Files.move(Paths.get(processCsv), Paths.get(COMPLETED_FOLDER + fileName));
         }
     }
 
@@ -220,5 +221,9 @@ public class HistoricalOptionsIngestor {
 
     public void setSlackUtil(SlackUtil slackUtil) {
         this.slackUtil = slackUtil;
+    }
+
+    public List<String> getProcessedCsvFiles() {
+        return processedCsvFiles;
     }
 }

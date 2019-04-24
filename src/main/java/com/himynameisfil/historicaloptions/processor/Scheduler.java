@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -16,15 +17,14 @@ import java.util.List;
 public class Scheduler {
     private static final Logger log = LoggerFactory.getLogger(Scheduler.class);
 
-    @Scheduled(cron = "0 0 11 * * *")
+    @Scheduled(cron = "0 5 * * * *")
     public void processHistoricalOptionsData() {
         SlackUtil slackUtil   =   new SlackUtil();
-        slackUtil.sendMessage("Started Daily Historical Options Ingestor : " + new SimpleDateFormat("MM-dd-yyyy hh:mm").format(new Date()));
         HistoricalOptionsIngestor historicalOptionsIngestor =   new HistoricalOptionsIngestor("/data/historical_options_input");
 
         try {
             historicalOptionsIngestor.loadInputFolder();
-        } catch (SQLException | ClassNotFoundException e) {
+        } catch (SQLException | ClassNotFoundException | IOException e) {
             e.printStackTrace();
         }
         /*
@@ -50,7 +50,10 @@ public class Scheduler {
 
         }
         */
-        slackUtil.sendMessage("Finished Daily Historical Options Ingestor : " + new SimpleDateFormat("MM-dd-yyyy hh:mm").format(new Date()));
+        if (historicalOptionsIngestor.getProcessedCsvFiles().size() > 0 ) {
+            slackUtil.sendMessage("Finished Hourly Historical Options Ingestor and processed " + historicalOptionsIngestor.getProcessedCsvFiles().size() + " files");
+        }
+
     }
 
 }
