@@ -2,6 +2,7 @@ package com.himynameisfil.historicaloptions.controller;
 
 import com.himynameisfil.historicaloptions.messaging.SlackUtil;
 import com.himynameisfil.historicaloptions.model.HistoricalOption;
+import com.himynameisfil.historicaloptions.util.FileUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -21,21 +22,22 @@ import java.util.List;
 import java.util.Properties;
 
 public class HistoricalOptionsIngestor {
-    private static final String COMPLETED_FOLDER    =   "/data/historical_options_complete/";
+    private static final String COMPLETED_FOLDER    =   "/data/historical_options_complete";
     private String inputFolder;
     private String url;
     private String username;
     private String password;
-    private List<String>    csvFilesToProcess;
-    private List<String>    processedCsvFiles;
+    private List<File>    csvFilesToProcess;
+    private List<File>    processedCsvFiles;
     private List<HistoricalOption>  listOfHistoricalOptionsRecords;
     private SlackUtil   slackUtil;
+    private FileUtil    fileUtil;
 
     public HistoricalOptionsIngestor(String inputFolder) {
         loadProperties();
         this.inputFolder    =   inputFolder;
-        slackUtil   =   new SlackUtil();
-        processedCsvFiles   =   new ArrayList<String>();
+        slackUtil   =   new SlackUtil("/config/HistoricalOptionsIngestorSlack.properties");
+        processedCsvFiles   =   new ArrayList<File>();
 
     }
 
@@ -44,14 +46,15 @@ public class HistoricalOptionsIngestor {
         listOfHistoricalOptionsRecords  =   new ArrayList<HistoricalOption>();
 
         //get all file names
-        getAndSetAllCsvFileNames(new File(this.inputFolder));
-
-        for (String file : csvFilesToProcess) {
-            slackUtil.sendMessage(file);
+        this.csvFilesToProcess  =   get2CsvFileNames(this.inputFolder);
+/*
+        for (File file : csvFilesToProcess) {
+            slackUtil.sendMessage(file.getAbsolutePath());
         }
+*/
         if (this.csvFilesToProcess.size() != 0 ) {
             //get all records from all files
-            for (String csvFile: csvFilesToProcess) {
+            for (File csvFile: csvFilesToProcess) {
                 loadAllData(csvFile);
             }
             //load all records to mysql
@@ -63,10 +66,10 @@ public class HistoricalOptionsIngestor {
         }
     }
 
-    private void loadAllData(String csvFile) {
+    private void loadAllData(File csvFile) {
         try {
             CSVFormat format = CSVFormat.RFC4180.withHeader().withDelimiter(',');
-            CSVParser parser = new CSVParser(new FileReader(csvFile), format);
+            CSVParser parser = new CSVParser(new FileReader(csvFile.getAbsolutePath()), format);
 
             for (CSVRecord record : parser) {
                 HistoricalOption historicalOption = new HistoricalOption();
@@ -151,19 +154,15 @@ public class HistoricalOptionsIngestor {
         }
     }
 
-    private void getAndSetAllCsvFileNames(File folder) {
-        List<String>    returnListOfCsvs    =   new ArrayList<String>();
-        for (File file : folder.listFiles()) {
-            if (file.getName().contains(".csv")) {
-                returnListOfCsvs.add(file.getAbsolutePath());
-            } else {
-                slackUtil.sendMessage("HistoricalOptionsIngestor: There is a non csv file in in the ingestion folder: " + file.getName());
-            }
-            if ( returnListOfCsvs.size() >= 2 ) {
-                break;
-            }
+    public List<File> get2CsvFileNames(String folder) {
+        fileUtil    =   new FileUtil(folder);
+        List<File>    returnListOfCsvs    =   fileUtil.getCsvListInPathNonRecurse();
+
+        if ( returnListOfCsvs.size() >= 2 ) {
+            return returnListOfCsvs.subList(0,2);
+        } else {
+            return returnListOfCsvs;
         }
-        this.csvFilesToProcess  =   returnListOfCsvs;
     }
 
 
@@ -181,16 +180,13 @@ public class HistoricalOptionsIngestor {
 
     private void moveToCompleted() throws IOException {
         //currently broken, idk why
-        File    file;
-        String  fileName;
-        for (String processCsv : this.processedCsvFiles) {
-            file        =   new File(processCsv);
-            fileName    =   file.getName();
-            if (file.renameTo(new File(COMPLETED_FOLDER + fileName))) {
-                file.delete();
-                slackUtil.sendMessage("Sent the file to completed: " + processCsv);
+        FileUtil    fileUtil;
+        for (File processCsv : this.processedCsvFiles) {
+            fileUtil    =   new FileUtil(processCsv);
+            if (fileUtil.moveFileTo(COMPLETED_FOLDER)) {
+                slackUtil.sendMessage("Sent the file to completed: " + processCsv.getAbsolutePath() + " was sent to " + fileUtil.getFileOfInterest().getAbsolutePath());
             } else {
-                slackUtil.sendMessage("Failed to send file to completed: " + processCsv);
+                slackUtil.sendMessage("Failed to send file to completed: " + processCsv.getAbsolutePath());
             }
         }
     }
@@ -211,9 +207,6 @@ public class HistoricalOptionsIngestor {
         this.password = password;
     }
 
-    public void setCsvFilesToProcess(List<String> csvFilesToProcess) {
-        this.csvFilesToProcess = csvFilesToProcess;
-    }
 
     public void setListOfHistoricalOptionsRecords(List<HistoricalOption> listOfHistoricalOptionsRecords) {
         this.listOfHistoricalOptionsRecords = listOfHistoricalOptionsRecords;
@@ -223,7 +216,8 @@ public class HistoricalOptionsIngestor {
         this.slackUtil = slackUtil;
     }
 
-    public List<String> getProcessedCsvFiles() {
+    public List<File> getProcessedCsvFiles() {
         return processedCsvFiles;
     }
+
 }

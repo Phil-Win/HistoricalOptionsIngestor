@@ -8,11 +8,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.io.File;
+
 @EnableScheduling
 @SpringBootApplication
 public class Application {
 	private static final Logger log = LoggerFactory.getLogger(Application.class);
 	public static void main(String[] args) {
+
 		SlackUtil slackUtil   =   new SlackUtil();
 		try {
 			slackUtil.sendMessage("Application Started!");
@@ -20,6 +23,7 @@ public class Application {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+
 	}
 
 }
